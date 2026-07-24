@@ -71,7 +71,6 @@ export function subStoreTransformPlugin() {
     }
 
     function precompilePeggyParser(contents, id, pluginContext) {
-function precompilePeggyParser(contents, id, pluginContext) {
     // 兼容旧版：const grammars = String.raw`...`
     // 兼容直接模板字符串、export、const/let/var，以及 grammar 单数写法
     const match = /(?:export\s+)?(?:const|let|var)\s+grammars?\s*=\s*(?:String\.raw\s*)?`([\s\S]*?)`/m.exec(contents);
