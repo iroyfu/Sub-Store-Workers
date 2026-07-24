@@ -233,7 +233,12 @@ export function subStoreTransformPlugin() {
             }
 
             if (id.includes('sub-store/backend/src/core/proxy-utils/parsers/peggy/')) {
-                contents = precompilePeggyParser(contents, id, this);
+                const hasPeggyGrammar =
+                    /(?:export\s+)?(?:const|let|var)\s+grammars?\s*=\s*(?:String\.raw\s*)?`[\s\S]*?`/m.test(contents);
+            
+                if (hasPeggyGrammar) {
+                    contents = precompilePeggyParser(contents, id, this);
+                }
             }
 
             if (id.includes('vendor/express.js')) {
