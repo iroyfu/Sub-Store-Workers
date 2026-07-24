@@ -71,21 +71,53 @@ export function subStoreTransformPlugin() {
     }
 
     function precompilePeggyParser(contents, id, pluginContext) {
-        const match = /(?:export\s+)?const\s+grammars?\s*=\s*(?:String\.raw)?`([\s\S]*?)`(?:;|,)?/.exec(contents);
-        if (!match) {
-            pluginContext.error(`[sub-store-transform] ${id} Peggy parser 预编译失败：未找到 grammars`);
-        }
+function precompilePeggyParser(contents, id, pluginContext) {
+    // 兼容旧版：const grammars = String.raw`...`
+    // 兼容直接模板字符串、export、const/let/var，以及 grammar 单数写法
+    const match = /(?:export\s+)?(?:const|let|var)\s+grammars?\s*=\s*(?:String\.raw\s*)?`([\s\S]*?)`/m.exec(contents);
 
-        const parserSource = peggy.generate(match[1], {
+    if (!match) {
+        const preview = contents
+            .slice(0, 3000)
+            .replace(/\r/g, '\\r')
+            .replace(/\n/g, '\\n');
+
+        pluginContext.error(
+            `[sub-store-transform] ${id} Peggy parser 预编译失败：未找到 grammar/grammars；文件开头：${preview}`,
+        );
+        return null;
+    }
+
+    let parserSource;
+    try {
+        parserSource = peggy.generate(match[1], {
             output: 'source',
             format: 'bare',
         });
+    } catch (error) {
+        pluginContext.error(
+            `[sub-store-transform] ${id} Peggy parser 预编译失败：${error?.message || String(error)}`,
+        );
+        return null;
+    }
 
-        const output = `// __SUB_STORE_WORKERS_PATCH__PEGGY_PRECOMPILED_PARSER__
+    const output = `// __SUB_STORE_WORKERS_PATCH__PEGGY_PRECOMPILED_PARSER__
 const parser = ${parserSource};
 
 export default function getParser() {
     return parser;
+}
+`;
+
+    if (output.includes('peggy.generate')) {
+        pluginContext.error(
+            `[sub-store-transform] ${id} Peggy parser 预编译失败：生成结果仍包含 peggy.generate`,
+        );
+        return null;
+    }
+
+    return output;
+}
 }
 `;
         if (output.includes('peggy.generate')) {
