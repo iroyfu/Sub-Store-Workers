@@ -84,6 +84,21 @@ export function subStoreTransformPlugin() {
         );
     }
 
+    // 新增函数：专门处理直接的 require('xxx') 替换，而不仅仅是 eval('require(...)')
+    function replaceDirectRequire(contents, moduleName, replacement) {
+        const escaped = moduleName
+            .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            .replace(/\//g, '\\/');
+
+        return contents.replace(
+            new RegExp(
+                '(?<![\'"`])\\brequire\\s*\\(\\s*[\'"`]' + escaped + '[\'"`]\\s*\\)',
+                'g',
+            ),
+            replacement,
+        );
+    }
+
     function assertNoDangerousRequireResidue(contents, id, pluginContext) {
         const matched = dangerousRequirePatterns.find((pattern) => pattern.test(contents));
 
@@ -204,6 +219,52 @@ export function subStoreTransformPlugin() {
                 '({ Reader: { openBuffer: () => ({ country: () => null, asn: () => null }) } })',
             );
             contents = replaceEvalRequire(
+                contents,
+                'stream/promises',
+                'globalThis.__stream_promises_shim__',
+            );
+
+            // 新增：直接替换掉源码里写死的 require('xxx')，避免路径文件和 fs 文件残留 require 导致构建报错
+            contents = replaceDirectRequire(contents, 'dotenv', '({ config: () => {} })');
+            contents = replaceDirectRequire(contents, 'fs', 'globalThis.__fs_shim__');
+            contents = replaceDirectRequire(contents, 'path', 'globalThis.__path_shim__');
+            contents = replaceDirectRequire(
+                contents,
+                'undici',
+                '({ request: globalThis.fetch, Agent: class {}, ProxyAgent: class {}, EnvHttpProxyAgent: class {} })',
+            );
+            contents = replaceDirectRequire(contents, 'fetch-socks', '({ socksDispatcher: () => null })');
+            contents = replaceDirectRequire(contents, 'express', 'null');
+            contents = replaceDirectRequire(
+                contents,
+                'body-parser',
+                '({ json: () => (req, res, next) => next(), urlencoded: () => (req, res, next) => next(), raw: () => (req, res, next) => next() })',
+            );
+            contents = replaceDirectRequire(contents, 'cron', '({ CronJob: class { constructor() {} } })');
+            contents = replaceDirectRequire(contents, 'child_process', '({ execFile: () => {} })');
+            contents = replaceDirectRequire(
+                contents,
+                'connect-history-api-fallback',
+                '(() => (req, res, next) => next())',
+            );
+            contents = replaceDirectRequire(
+                contents,
+                'http-proxy-middleware',
+                '({ createProxyMiddleware: () => (req, res, next) => next() })',
+            );
+            contents = replaceDirectRequire(contents, 'mime-types', '({ contentType: () => "text/plain" })');
+            contents = replaceDirectRequire(contents, 'ms', 'globalThis.__ms_shim__');
+            contents = replaceDirectRequire(
+                contents,
+                'nanoid',
+                '({ nanoid: (size = 21) => crypto.randomUUID().replace(/-/g, "").slice(0, size) })',
+            );
+            contents = replaceDirectRequire(
+                contents,
+                '@maxmind/geoip2-node',
+                '({ Reader: { openBuffer: () => ({ country: () => null, asn: () => null }) } })',
+            );
+            contents = replaceDirectRequire(
                 contents,
                 'stream/promises',
                 'globalThis.__stream_promises_shim__',
