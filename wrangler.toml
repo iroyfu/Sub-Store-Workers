@@ -40,5 +40,14 @@ namespace_id = "1001"
 # 每分钟最多 5 次登录尝试
 simple = { limit = 5, period = 60 }
 # 观测
-[observability]
+[observability.logs]
 enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1
+persist = true
+
